@@ -83,18 +83,28 @@ export function useAudioSynthesis() {
       await initialize();
     }
 
+    // Performance safeguard - limit mappings
+    if (mappings.length > 100) {
+      toast({
+        title: "Sequence Limited",
+        description: `Playing first 50 glyphs of ${mappings.length} for performance.`,
+        variant: "default"
+      });
+    }
+
     try {
+      setState(prev => ({ ...prev, isPlaying: true }));
       await audioEngine.playSequence(
         mappings,
         waveformType || state.waveformType,
         duration
       );
-      setState(prev => ({ ...prev, isPlaying: true }));
     } catch (error) {
       console.error('Sequence playback failed:', error);
+      setState(prev => ({ ...prev, isPlaying: false }));
       toast({
         title: "Playback Error",
-        description: "Failed to play glyph sequence.",
+        description: "Failed to play glyph sequence. Try a shorter sequence.",
         variant: "destructive"
       });
     }

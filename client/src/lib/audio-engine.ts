@@ -101,38 +101,72 @@ export class AudioEngine {
 
     this.stopAllOscillators();
 
+    // Performance safeguard - limit sequence length to prevent browser hangs
+    const maxSequenceLength = 50; // Reasonable limit for audio performance
+    const limitedMappings = mappings.slice(0, maxSequenceLength);
+    
+    // Limit duration for very long sequences
+    const adjustedDuration = limitedMappings.length > 20 ? 0.2 : duration;
+
     let currentTime = this.audioContext.currentTime;
     
-    for (const mapping of mappings) {
-      const oscillator = this.audioContext.createOscillator();
-      const gainNode = this.audioContext.createGain();
+    try {
+      for (let i = 0; i < limitedMappings.length; i++) {
+        const mapping = limitedMappings[i];
+        
+        // Skip if frequency is invalid
+        if (!mapping.frequency || mapping.frequency < 20 || mapping.frequency > 20000) {
+          currentTime += adjustedDuration;
+          continue;
+        }
+        
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
 
-      oscillator.type = waveformType;
-      oscillator.frequency.setValueAtTime(mapping.frequency, currentTime);
-      
-      // Envelope for smooth transitions
-      gainNode.gain.setValueAtTime(0, currentTime);
-      gainNode.gain.linearRampToValueAtTime(mapping.amplitude * 0.7, currentTime + 0.05);
-      gainNode.gain.setValueAtTime(mapping.amplitude * 0.7, currentTime + duration - 0.05);
-      gainNode.gain.linearRampToValueAtTime(0, currentTime + duration);
+        oscillator.type = waveformType;
+        oscillator.frequency.setValueAtTime(mapping.frequency, currentTime);
+        
+        // Envelope for smooth transitions with shorter ramps for performance
+        const rampTime = Math.min(0.02, adjustedDuration * 0.1);
+        gainNode.gain.setValueAtTime(0, currentTime);
+        gainNode.gain.linearRampToValueAtTime(mapping.amplitude * 0.5, currentTime + rampTime);
+        gainNode.gain.setValueAtTime(mapping.amplitude * 0.5, currentTime + adjustedDuration - rampTime);
+        gainNode.gain.linearRampToValueAtTime(0, currentTime + adjustedDuration);
 
-      oscillator.connect(gainNode);
-      gainNode.connect(this.masterGain);
+        oscillator.connect(gainNode);
+        gainNode.connect(this.masterGain);
 
-      oscillator.start(currentTime);
-      oscillator.stop(currentTime + duration);
+        oscillator.start(currentTime);
+        oscillator.stop(currentTime + adjustedDuration);
 
-      this.activeOscillators.push(oscillator);
-      
-      currentTime += duration * 0.8; // 20% overlap between tones
+        this.activeOscillators.push(oscillator);
+        
+        // Clean up oscillator after it finishes to prevent memory leaks
+        oscillator.onended = () => {
+          const index = this.activeOscillators.indexOf(oscillator);
+          if (index > -1) {
+            this.activeOscillators.splice(index, 1);
+          }
+        };
+
+        currentTime += adjustedDuration;
+        
+        // Add small gap between tones for clarity
+        currentTime += 0.02;
+      }
+    } catch (error) {
+      console.error('Error in playSequence:', error);
+      this.stopAllOscillators();
+      throw error;
     }
 
     this.isPlaying = true;
     
     // Auto-stop after sequence completes
+    const totalDuration = (limitedMappings.length * (adjustedDuration + 0.02)) * 1000;
     setTimeout(() => {
       this.isPlaying = false;
-    }, currentTime - this.audioContext.currentTime + 1000);
+    }, totalDuration + 500);
   }
 
   async playChord(frequencies: number[], waveformType: WaveformType, volume: number = 0.5): Promise<void> {

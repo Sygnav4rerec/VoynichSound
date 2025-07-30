@@ -57,17 +57,30 @@ export default function FrequencyVisualizer({
     }
 
     const { width, height } = canvas;
-    const mappings = analysisResult.frequencyMappings;
+    let mappings = analysisResult.frequencyMappings;
+
+    // Performance safeguard - limit visualization to prevent browser hangs
+    const maxBars = 100;
+    if (mappings.length > maxBars) {
+      mappings = mappings.slice(0, maxBars);
+    }
 
     // Clear canvas
     ctx.fillStyle = 'rgba(30, 41, 59, 0.95)';
     ctx.fillRect(0, 0, width, height);
 
+    // Skip visualization if too many items
+    if (mappings.length === 0) {
+      drawEmptyState(canvas);
+      return;
+    }
+
     // Draw frequency bars
-    const barWidth = width / mappings.length;
+    const barWidth = Math.max(2, width / mappings.length);
     const maxFreq = Math.max(...mappings.map((m: any) => m.frequency));
 
-    mappings.forEach((mapping: any, index: number) => {
+    try {
+      mappings.forEach((mapping: any, index: number) => {
       const barHeight = (mapping.frequency / maxFreq) * height * 0.8;
       const x = index * barWidth;
       const y = height - barHeight;
@@ -81,17 +94,24 @@ export default function FrequencyVisualizer({
       ctx.fillStyle = gradient;
       ctx.fillRect(x + 2, y, barWidth - 4, barHeight);
 
-      // Draw glyph label
-      ctx.fillStyle = 'white';
-      ctx.font = '12px monospace';
-      ctx.textAlign = 'center';
-      ctx.fillText(mapping.glyph, x + barWidth / 2, height - 5);
+        // Only draw labels if bars are wide enough
+        if (barWidth > 15) {
+          // Draw glyph label
+          ctx.fillStyle = 'white';
+          ctx.font = '12px monospace';
+          ctx.textAlign = 'center';
+          ctx.fillText(mapping.glyph, x + barWidth / 2, height - 5);
 
-      // Draw frequency label
-      ctx.fillStyle = '#f59e0b';
-      ctx.font = '10px sans-serif';
-      ctx.fillText(`${Math.round(mapping.frequency)}Hz`, x + barWidth / 2, y - 5);
-    });
+          // Draw frequency label
+          ctx.fillStyle = '#f59e0b';
+          ctx.font = '10px sans-serif';
+          ctx.fillText(`${Math.round(mapping.frequency)}Hz`, x + barWidth / 2, y - 5);
+        }
+      });
+    } catch (error) {
+      console.error('Visualization error:', error);
+      drawEmptyState(canvas);
+    }
   };
 
   const drawEmptyState = (canvas: HTMLCanvasElement) => {
