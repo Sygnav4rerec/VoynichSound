@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, json, timestamp, real, integer } from "drizzle-orm/pg-core";
+import { relations } from 'drizzle-orm';
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -45,6 +46,34 @@ export const manuscriptImages = pgTable("manuscript_images", {
   analysisData: json("analysis_data"),
   createdAt: timestamp("created_at").defaultNow(),
 });
+
+// Relations
+export const usersRelations = relations(users, ({ many }) => ({
+  analysisSessions: many(analysisSession),
+  glyphPresets: many(glyphPresets),
+  manuscriptImages: many(manuscriptImages),
+}));
+
+export const analysisSessionRelations = relations(analysisSession, ({ one }) => ({
+  user: one(users, {
+    fields: [analysisSession.userId],
+    references: [users.id],
+  }),
+}));
+
+export const glyphPresetsRelations = relations(glyphPresets, ({ one }) => ({
+  user: one(users, {
+    fields: [glyphPresets.userId],
+    references: [users.id],
+  }),
+}));
+
+export const manuscriptImagesRelations = relations(manuscriptImages, ({ one }) => ({
+  user: one(users, {
+    fields: [manuscriptImages.userId],
+    references: [users.id],
+  }),
+}));
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,

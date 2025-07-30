@@ -23,7 +23,7 @@ The application follows a modern full-stack architecture with clear separation b
 ### Backend Architecture
 - **Runtime**: Node.js with Express.js framework
 - **Language**: TypeScript with ES modules
-- **Database**: PostgreSQL with Drizzle ORM (currently using in-memory storage for demo)
+- **Database**: PostgreSQL with Drizzle ORM using Neon serverless driver
 - **File Processing**: Multer for file uploads, Sharp for image processing
 - **Session Management**: Express sessions with PostgreSQL storage
 
@@ -94,3 +94,12 @@ The application is designed for deployment on Replit with the following configur
 - Error handling middleware for graceful error responses
 
 The application emphasizes real-time analysis capabilities, user-friendly interfaces for complex audio synthesis, and persistent storage of research data. The modular architecture allows for easy extension of analysis algorithms and audio synthesis techniques.
+
+## Recent Changes
+
+### Database Integration (January 30, 2025)
+- Added PostgreSQL database with Drizzle ORM
+- Implemented DatabaseStorage class replacing in-memory MemStorage
+- Created database schema with proper relations for users, analysis sessions, glyph presets, and manuscript images  
+- Ran database migrations to create all tables
+- Fixed copy/paste functionality issues in glyph input with performance optimizations

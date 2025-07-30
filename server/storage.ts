@@ -6,9 +6,15 @@ import {
   type GlyphPreset,
   type InsertGlyphPreset,
   type ManuscriptImage,
-  type InsertManuscriptImage
+  type InsertManuscriptImage,
+  users, 
+  analysisSession, 
+  glyphPresets, 
+  manuscriptImages 
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { db } from './db';
+import { eq, desc } from 'drizzle-orm';
 
 export interface IStorage {
   // Users
@@ -153,4 +159,105 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database implementation using Drizzle ORM
+export class DatabaseStorage implements IStorage {
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+
+  async getAnalysisSession(id: string): Promise<AnalysisSession | undefined> {
+    const [session] = await db.select().from(analysisSession).where(eq(analysisSession.id, id));
+    return session || undefined;
+  }
+
+  async getAnalysisSessionsByUser(userId: string): Promise<AnalysisSession[]> {
+    return await db.select().from(analysisSession)
+      .where(eq(analysisSession.userId, userId))
+      .orderBy(desc(analysisSession.updatedAt));
+  }
+
+  async createAnalysisSession(sessionData: InsertAnalysisSession & { userId: string }): Promise<AnalysisSession> {
+    const [session] = await db
+      .insert(analysisSession)
+      .values(sessionData)
+      .returning();
+    return session;
+  }
+
+  async updateAnalysisSession(id: string, updates: Partial<InsertAnalysisSession>): Promise<AnalysisSession | undefined> {
+    const [session] = await db
+      .update(analysisSession)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(analysisSession.id, id))
+      .returning();
+    return session || undefined;
+  }
+
+  async deleteAnalysisSession(id: string): Promise<boolean> {
+    const result = await db.delete(analysisSession).where(eq(analysisSession.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getGlyphPresets(userId: string): Promise<GlyphPreset[]> {
+    return await db.select().from(glyphPresets)
+      .where(eq(glyphPresets.userId, userId))
+      .orderBy(desc(glyphPresets.createdAt));
+  }
+
+  async createGlyphPreset(presetData: InsertGlyphPreset & { userId: string }): Promise<GlyphPreset> {
+    const [preset] = await db
+      .insert(glyphPresets)
+      .values(presetData)
+      .returning();
+    return preset;
+  }
+
+  async deleteGlyphPreset(id: string): Promise<boolean> {
+    const result = await db.delete(glyphPresets).where(eq(glyphPresets.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+
+  async getManuscriptImages(userId: string): Promise<ManuscriptImage[]> {
+    return await db.select().from(manuscriptImages)
+      .where(eq(manuscriptImages.userId, userId))
+      .orderBy(desc(manuscriptImages.createdAt));
+  }
+
+  async createManuscriptImage(imageData: InsertManuscriptImage & { userId: string }): Promise<ManuscriptImage> {
+    const [image] = await db
+      .insert(manuscriptImages)
+      .values(imageData)
+      .returning();
+    return image;
+  }
+
+  async updateManuscriptImage(id: string, updates: Partial<InsertManuscriptImage>): Promise<ManuscriptImage | undefined> {
+    const [image] = await db
+      .update(manuscriptImages)
+      .set(updates)
+      .where(eq(manuscriptImages.id, id))
+      .returning();
+    return image || undefined;
+  }
+
+  async deleteManuscriptImage(id: string): Promise<boolean> {
+    const result = await db.delete(manuscriptImages).where(eq(manuscriptImages.id, id));
+    return result.rowCount ? result.rowCount > 0 : false;
+  }
+}
+
+export const storage = new DatabaseStorage();
