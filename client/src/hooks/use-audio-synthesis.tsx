@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { audioEngine, type WaveformType, type AudioConfig, type FrequencyMapping } from '@/lib/audio-engine';
+import { simpleAudioEngine } from '@/lib/simple-audio';
 import { useToast } from '@/hooks/use-toast';
 
 export interface AudioSynthesisState {
@@ -79,36 +80,60 @@ export function useAudioSynthesis() {
     waveformType?: WaveformType,
     duration: number = 0.5
   ) => {
-    if (!state.isInitialized) {
-      await initialize();
-    }
-
-    // Performance safeguard - limit mappings
-    if (mappings.length > 100) {
-      toast({
-        title: "Sequence Limited",
-        description: `Playing first 50 glyphs of ${mappings.length} for performance.`,
-        variant: "default"
-      });
-    }
+    // Creative approach - try multiple fallback methods
+    setState(prev => ({ ...prev, isPlaying: true }));
 
     try {
-      setState(prev => ({ ...prev, isPlaying: true }));
-      await audioEngine.playSequence(
-        mappings,
-        waveformType || state.waveformType,
-        duration
-      );
-    } catch (error) {
-      console.error('Sequence playback failed:', error);
-      setState(prev => ({ ...prev, isPlaying: false }));
+      // Method 1: Try simple audio engine first
+      await simpleAudioEngine.initialize();
+      
       toast({
-        title: "Playback Error",
-        description: "Failed to play glyph sequence. Try a shorter sequence.",
-        variant: "destructive"
+        title: "Playing Sequence",
+        description: `Converting ${Math.min(mappings.length, 5)} glyphs to tones...`,
+        variant: "default"
       });
+
+      // Try the minimal approach first
+      await simpleAudioEngine.playMinimalSequence(mappings);
+      
+      toast({
+        title: "Sequence Complete",
+        description: "Glyph sequence converted to audio successfully!",
+        variant: "default"
+      });
+
+    } catch (error) {
+      console.log('Minimal audio failed, trying visual feedback...');
+      
+      try {
+        // Method 2: Fall back to visual representation
+        await simpleAudioEngine.playVisualSequence(mappings);
+        
+        toast({
+          title: "Visual Sequence",
+          description: "Audio unavailable - showing visual frequency representation",
+          variant: "default"
+        });
+        
+      } catch (visualError) {
+        console.log('Visual feedback failed, trying data URL approach...');
+        
+        try {
+          // Method 3: Try data URL approach
+          await simpleAudioEngine.playDataUrlSequence(mappings);
+          
+        } catch (dataUrlError) {
+          toast({
+            title: "Audio Unavailable",
+            description: "Unable to play audio - check browser permissions",
+            variant: "destructive"
+          });
+        }
+      }
+    } finally {
+      setState(prev => ({ ...prev, isPlaying: false }));
     }
-  }, [state, initialize, toast]);
+  }, [toast]);
 
   const playChord = useCallback(async (
     frequencies: number[],
