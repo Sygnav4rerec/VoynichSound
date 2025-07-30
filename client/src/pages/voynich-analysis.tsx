@@ -8,6 +8,7 @@ import ManuscriptUpload from '@/components/manuscript-upload';
 import AnalysisResults from '@/components/analysis-results';
 import PresetManager from '@/components/preset-manager';
 import ResearchNotes from '@/components/research-notes';
+import DebugPanel from '@/components/debug-panel';
 import { usePatternAnalysis, type AnalysisConfig } from '@/hooks/use-pattern-analysis';
 import { useAudioSynthesis } from '@/hooks/use-audio-synthesis';
 import type { MappingAlgorithm } from '@/lib/glyph-mapper';

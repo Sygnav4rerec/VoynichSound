@@ -111,3 +111,11 @@ The application emphasizes real-time analysis capabilities, user-friendly interf
 - Optimized frequency visualization with rendering limits (max 100 bars)
 - Added error handling and fallback analysis for edge cases
 - Implemented memory leak prevention with proper oscillator cleanup
+
+### Anchor-First Approach (January 30, 2025)
+- Implemented "anchor before expand" strategy to solve persistent browser crashes
+- Simplified tone generation to console-only output (no Web Audio API processing)
+- Added debug panel with kill switches for rendering, audio, and visualization
+- Current stable mode: Glyph input → frequency calculation → text log output
+- Removed all complex audio processing, DOM manipulation, and canvas operations
+- System now provides reliable glyph-to-frequency mapping without browser instability

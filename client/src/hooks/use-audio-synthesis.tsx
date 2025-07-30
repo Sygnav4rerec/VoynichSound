@@ -74,32 +74,34 @@ export function useAudioSynthesis() {
     }
   }, [state, initialize, toast]);
 
-  const playSequence = useCallback(async (
+  const playSequence = useCallback((
     mappings: FrequencyMapping[],
     waveformType?: WaveformType,
     duration: number = 0.5
   ) => {
-    // Minimal console-only approach to avoid browser crashes
+    // Step 1: Anchor - Just frequency calculation and text output
     setState(prev => ({ ...prev, isPlaying: true }));
 
-    try {
-      // Just log to console - simplest possible operation
-      console.log('Glyph to Frequency Conversion:');
-      mappings.slice(0, 10).forEach((mapping, index) => {
-        console.log(`${index + 1}. "${mapping.glyph}" → ${Math.round(mapping.frequency)}Hz`);
-      });
-      
-      toast({
-        title: "Conversion Complete",
-        description: `Check console for ${mappings.length} glyph frequencies`,
-        variant: "default"
-      });
+    // Simple synchronous operation - no async, no complex processing
+    console.log('=== Glyph Frequency Analysis ===');
+    
+    const results = mappings.slice(0, 5).map((mapping, index) => {
+      const freq = Math.round(mapping.frequency);
+      const amp = Math.round(mapping.amplitude * 100);
+      console.log(`${index + 1}. "${mapping.glyph}" → ${freq}Hz (${amp}% amplitude)`);
+      return `${mapping.glyph}=${freq}Hz`;
+    });
+    
+    console.log('================================');
+    
+    // Show results in toast
+    toast({
+      title: "Frequency Mapping Complete",
+      description: results.join(', '),
+      variant: "default"
+    });
 
-    } catch (error) {
-      console.error('Conversion failed:', error);
-    } finally {
-      setState(prev => ({ ...prev, isPlaying: false }));
-    }
+    setState(prev => ({ ...prev, isPlaying: false }));
   }, [toast]);
 
   const playChord = useCallback(async (
