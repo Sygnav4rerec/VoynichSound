@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useRef, useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,20 +35,50 @@ export default function GlyphInputPanel({
   onAnalyze,
   isAnalyzing
 }: GlyphInputPanelProps) {
-  // Memoize calculations to prevent re-computation on every render
+  // Local state for immediate UI updates without triggering heavy calculations
+  const [localGlyphSequence, setLocalGlyphSequence] = useState(glyphSequence);
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Sync local state when external state changes
+  useEffect(() => {
+    setLocalGlyphSequence(glyphSequence);
+  }, [glyphSequence]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
+
+  // Memoize calculations based on the actual prop to prevent unnecessary recalculation
   const glyphStats = useMemo(() => {
-    const glyphs = Array.from(glyphSequence);
+    const glyphs = Array.from(glyphSequence || '');
     return {
       count: glyphs.length,
       unique: new Set(glyphs).size
     };
   }, [glyphSequence]);
 
-  // Optimized input handlers to prevent stalling
+  // Optimized input handler with immediate local update and debounced external update
   const handleGlyphSequenceChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value;
-    // Prevent excessive recalculations during rapid input
-    onGlyphSequenceChange(value);
+    
+    // Immediate local update for smooth UI
+    setLocalGlyphSequence(value);
+    
+    // Clear previous debounce timer
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    // Debounced external update to prevent performance issues
+    debounceTimer.current = setTimeout(() => {
+      onGlyphSequenceChange(value);
+    }, 500); // 500ms debounce for heavy pattern analysis
+    
   }, [onGlyphSequenceChange]);
 
   const handleFrequencySliderChange = useCallback((value: number[]) => {
@@ -75,7 +105,7 @@ export default function GlyphInputPanel({
         <Textarea 
           className="glyph-input w-full h-32 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-lg"
           placeholder="𝖆𝖇𝖈 ⟁〰༄ Enter Voynich glyphs or Unicode symbols..."
-          value={glyphSequence}
+          value={localGlyphSequence}
           onChange={handleGlyphSequenceChange}
         />
         <p className="text-xs text-gray-500 mt-2">

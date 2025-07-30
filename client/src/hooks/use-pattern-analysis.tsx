@@ -49,7 +49,7 @@ export function usePatternAnalysis() {
     }
   });
 
-  // Client-side analysis as fallback
+  // Client-side analysis as fallback with performance safeguards
   const performLocalAnalysis = useCallback((config: AnalysisConfig): PatternAnalysisResult => {
     const { glyphSequence, baseFrequency, mappingAlgorithm } = config;
     
@@ -64,44 +64,72 @@ export function usePatternAnalysis() {
       };
     }
 
-    const mappings = glyphMapper.mapGlyphsToFrequencies(glyphSequence, baseFrequency, mappingAlgorithm);
-    const statistics = glyphMapper.getGlyphStatistics(glyphSequence);
-    const patterns = glyphMapper.findPatterns(glyphSequence);
-    const harmonics = glyphMapper.calculateHarmonicRelationships(mappings);
-    
-    // Calculate complexity based on entropy
-    const complexity = statistics.entropy / Math.log2(Math.max(statistics.uniqueGlyphs, 1));
-    
-    // Calculate resonance index based on harmonic relationships
-    const harmonicRelationships = harmonics.filter(h => h.harmonic).length;
-    const totalRelationships = harmonics.length;
-    const resonanceIndex = totalRelationships > 0 ? harmonicRelationships / totalRelationships : 0;
-    
-    // Convert patterns to expected format
-    const formattedPatterns = patterns.slice(0, 10).map(pattern => {
-      const mappedFreq = glyphMapper.mapGlyphsToFrequencies(
-        pattern.pattern, 
-        baseFrequency, 
-        mappingAlgorithm
-      );
-      const avgFreq = mappedFreq.reduce((sum, m) => sum + m.frequency, 0) / mappedFreq.length;
-      
-      return {
-        sequence: pattern.pattern,
-        frequency: pattern.count,
-        percentage: (pattern.count / statistics.length) * 100,
-        mappedFrequency: avgFreq
-      };
-    });
+    // Performance safeguard - limit sequence length to prevent hanging
+    const maxLength = 1000;  // Reasonable limit for browser performance
+    const truncatedSequence = glyphSequence.length > maxLength 
+      ? glyphSequence.substring(0, maxLength) 
+      : glyphSequence;
 
-    return {
-      glyphCount: statistics.length,
-      uniqueGlyphs: statistics.uniqueGlyphs,
-      complexity,
-      resonanceIndex,
-      frequencyMappings: mappings,
-      patterns: formattedPatterns
-    };
+    try {
+      const mappings = glyphMapper.mapGlyphsToFrequencies(truncatedSequence, baseFrequency, mappingAlgorithm);
+      const statistics = glyphMapper.getGlyphStatistics(truncatedSequence);
+      const patterns = glyphMapper.findPatterns(truncatedSequence);
+      const harmonics = glyphMapper.calculateHarmonicRelationships(mappings);
+      
+      // Calculate complexity based on entropy
+      const complexity = statistics.entropy / Math.log2(Math.max(statistics.uniqueGlyphs, 1));
+      
+      // Calculate resonance index based on harmonic relationships
+      const harmonicRelationships = harmonics.filter(h => h.harmonic).length;
+      const totalRelationships = harmonics.length;
+      const resonanceIndex = totalRelationships > 0 ? harmonicRelationships / totalRelationships : 0;
+      
+      // Convert patterns to expected format with limits
+      const formattedPatterns = patterns.slice(0, 5).map(pattern => {
+        // Limit pattern analysis for better performance
+        const mappedFreq = glyphMapper.mapGlyphsToFrequencies(
+          pattern.pattern.substring(0, 10), // Limit pattern length
+          baseFrequency, 
+          mappingAlgorithm
+        );
+        const avgFreq = mappedFreq.length > 0 
+          ? mappedFreq.reduce((sum, m) => sum + m.frequency, 0) / mappedFreq.length
+          : baseFrequency;
+        
+        return {
+          sequence: pattern.pattern,
+          frequency: pattern.count,
+          percentage: (pattern.count / statistics.length) * 100,
+          mappedFrequency: avgFreq
+        };
+      });
+
+      return {
+        glyphCount: statistics.length,
+        uniqueGlyphs: statistics.uniqueGlyphs,
+        complexity,
+        resonanceIndex,
+        frequencyMappings: mappings,
+        patterns: formattedPatterns
+      };
+    } catch (error) {
+      console.error('Pattern analysis error:', error);
+      // Return basic statistics if analysis fails
+      const glyphs = Array.from(truncatedSequence);  
+      return {
+        glyphCount: glyphs.length,
+        uniqueGlyphs: new Set(glyphs).size,
+        complexity: 0,
+        resonanceIndex: 0,
+        frequencyMappings: glyphs.map(glyph => ({
+          glyph,
+          frequency: baseFrequency,
+          phase: 0,
+          amplitude: 0.5
+        })),
+        patterns: []
+      };
+    }
   }, []);
 
   const analyzeGlyphs = useCallback(async (config: AnalysisConfig) => {
