@@ -92,7 +92,7 @@ export class AudioEngine {
     }
   }
 
-  async playSequence(mappings: FrequencyMapping[], waveformType: WaveformType, duration: number = 0.5): Promise<void> {
+  async playSequence(mappings: FrequencyMapping[], waveformType: WaveformType, duration: number = 0.3): Promise<void> {
     await this.ensureInitialized();
     
     if (!this.audioContext || !this.masterGain) {
@@ -101,72 +101,64 @@ export class AudioEngine {
 
     this.stopAllOscillators();
 
-    // Performance safeguard - limit sequence length to prevent browser hangs
-    const maxSequenceLength = 50; // Reasonable limit for audio performance
+    // Toneresonance approach - keep it simple and reliable
+    const maxSequenceLength = 20; // Conservative limit for stability
     const limitedMappings = mappings.slice(0, maxSequenceLength);
+    const toneDuration = 0.3; // Fixed duration for consistency
     
-    // Limit duration for very long sequences
-    const adjustedDuration = limitedMappings.length > 20 ? 0.2 : duration;
-
-    let currentTime = this.audioContext.currentTime;
-    
-    try {
-      for (let i = 0; i < limitedMappings.length; i++) {
-        const mapping = limitedMappings[i];
-        
-        // Skip if frequency is invalid
-        if (!mapping.frequency || mapping.frequency < 20 || mapping.frequency > 20000) {
-          currentTime += adjustedDuration;
-          continue;
-        }
-        
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-
-        oscillator.type = waveformType;
-        oscillator.frequency.setValueAtTime(mapping.frequency, currentTime);
-        
-        // Envelope for smooth transitions with shorter ramps for performance
-        const rampTime = Math.min(0.02, adjustedDuration * 0.1);
-        gainNode.gain.setValueAtTime(0, currentTime);
-        gainNode.gain.linearRampToValueAtTime(mapping.amplitude * 0.5, currentTime + rampTime);
-        gainNode.gain.setValueAtTime(mapping.amplitude * 0.5, currentTime + adjustedDuration - rampTime);
-        gainNode.gain.linearRampToValueAtTime(0, currentTime + adjustedDuration);
-
-        oscillator.connect(gainNode);
-        gainNode.connect(this.masterGain);
-
-        oscillator.start(currentTime);
-        oscillator.stop(currentTime + adjustedDuration);
-
-        this.activeOscillators.push(oscillator);
-        
-        // Clean up oscillator after it finishes to prevent memory leaks
-        oscillator.onended = () => {
-          const index = this.activeOscillators.indexOf(oscillator);
-          if (index > -1) {
-            this.activeOscillators.splice(index, 1);
-          }
-        };
-
-        currentTime += adjustedDuration;
-        
-        // Add small gap between tones for clarity
-        currentTime += 0.02;
-      }
-    } catch (error) {
-      console.error('Error in playSequence:', error);
-      this.stopAllOscillators();
-      throw error;
-    }
-
     this.isPlaying = true;
+
+    // Play tones sequentially without complex timing
+    for (let i = 0; i < limitedMappings.length; i++) {
+      const mapping = limitedMappings[i];
+      
+      // Validate frequency range
+      if (!mapping.frequency || mapping.frequency < 80 || mapping.frequency > 2000) {
+        continue;
+      }
+      
+      try {
+        await this.playToneSimple(mapping.frequency, waveformType, toneDuration, mapping.amplitude);
+        
+        // Simple delay between tones
+        await new Promise(resolve => setTimeout(resolve, toneDuration * 1000 + 50));
+        
+      } catch (error) {
+        console.error('Error playing tone:', error);
+        break;
+      }
+    }
     
-    // Auto-stop after sequence completes
-    const totalDuration = (limitedMappings.length * (adjustedDuration + 0.02)) * 1000;
+    this.isPlaying = false;
+  }
+
+  private async playToneSimple(frequency: number, waveformType: WaveformType, duration: number, amplitude: number): Promise<void> {
+    if (!this.audioContext || !this.masterGain) return;
+
+    const oscillator = this.audioContext.createOscillator();
+    const gainNode = this.audioContext.createGain();
+
+    oscillator.type = waveformType;
+    oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+    
+    // Simple gain control without complex envelopes
+    gainNode.gain.setValueAtTime(amplitude * 0.3, this.audioContext.currentTime);
+
+    oscillator.connect(gainNode);
+    gainNode.connect(this.masterGain);
+
+    oscillator.start();
+    
+    // Simple cleanup after duration
     setTimeout(() => {
-      this.isPlaying = false;
-    }, totalDuration + 500);
+      try {
+        oscillator.stop();
+        gainNode.disconnect();
+        oscillator.disconnect();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }, duration * 1000);
   }
 
   async playChord(frequencies: number[], waveformType: WaveformType, volume: number = 0.5): Promise<void> {

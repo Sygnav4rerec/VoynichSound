@@ -16,7 +16,13 @@ export class GlyphMapper {
     baseFrequency: number = 440,
     algorithm: MappingAlgorithm = 'unicode'
   ): GlyphMapping[] {
-    const glyphs = Array.from(glyphSequence);
+    // Performance safeguard from toneresonance - limit sequence length
+    const maxLength = 50;
+    const truncatedSequence = glyphSequence.length > maxLength 
+      ? glyphSequence.substring(0, maxLength) 
+      : glyphSequence;
+      
+    const glyphs = Array.from(truncatedSequence);
     return glyphs.map(glyph => this.mapSingleGlyph(glyph, baseFrequency, algorithm));
   }
 
@@ -52,9 +58,14 @@ export class GlyphMapper {
   }
 
   private unicodeMapping(glyph: string, baseFrequency: number): number {
-    const codePoint = glyph.codePointAt(0) || 0;
-    const normalized = (codePoint % 2000) / 2000;
-    const frequency = baseFrequency + (normalized - 0.5) * baseFrequency * 2;
+    // Simple, reliable mapping like toneresonance
+    const codePoint = glyph.codePointAt(0) || 65; // Default to 'A' if invalid
+    
+    // Map unicode to frequency using a simple linear scale
+    const normalizedCode = codePoint % 256; // Keep within reasonable range
+    const frequencyMultiplier = (normalizedCode / 256) * 2 + 0.5; // 0.5x to 2.5x base frequency
+    const frequency = baseFrequency * frequencyMultiplier;
+    
     return Math.max(this.FREQUENCY_RANGE.min, Math.min(this.FREQUENCY_RANGE.max, frequency));
   }
 
