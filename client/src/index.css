@@ -1,0 +1,251 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(60, 4.8%, 95.9%);
+  --secondary-foreground: hsl(24, 9.8%, 10%);
+  --accent: hsl(60, 4.8%, 95.9%);
+  --accent-foreground: hsl(24, 9.8%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(20, 14.3%, 4.1%);
+  --radius: 0.5rem;
+  
+  /* Voynich-specific colors */
+  --voynich-slate: hsl(215, 28%, 17%);
+  --voynich-amber: hsl(45, 93%, 47%);
+  --voynich-blue: hsl(207, 90%, 54%);
+  --voynich-green: hsl(142, 76%, 36%);
+  --voynich-purple: hsl(262, 83%, 58%);
+  --voynich-pink: hsl(330, 81%, 60%);
+  --voynich-indigo: hsl(239, 84%, 67%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  .glyph-input {
+    font-family: 'JetBrains Mono', 'Consolas', 'Monaco', monospace;
+  }
+
+  .spectrum-viz {
+    background: linear-gradient(135deg, var(--voynich-slate) 0%, hsl(221, 39%, 11%) 100%);
+  }
+
+  .analysis-card {
+    transition: all 0.3s ease;
+  }
+
+  .analysis-card:hover {
+    transform: translateY(-2px);
+  }
+
+  .voynich-header {
+    background-color: var(--voynich-slate);
+  }
+
+  .voynich-amber {
+    color: var(--voynich-amber);
+  }
+
+  .voynich-amber-bg {
+    background-color: var(--voynich-amber);
+  }
+
+  .voynich-blue {
+    color: var(--voynich-blue);
+  }
+
+  .voynich-blue-bg {
+    background-color: var(--voynich-blue);
+  }
+
+  .voynich-green {
+    color: var(--voynich-green);
+  }
+
+  .voynich-green-bg {
+    background-color: var(--voynich-green);
+  }
+
+  .voynich-purple {
+    color: var(--voynich-purple);
+  }
+
+  .voynich-purple-bg {
+    background-color: var(--voynich-purple);
+  }
+
+  .voynich-pink {
+    color: var(--voynich-pink);
+  }
+
+  .voynich-pink-bg {
+    background-color: var(--voynich-pink);
+  }
+
+  .voynich-indigo {
+    color: var(--voynich-indigo);
+  }
+
+  .voynich-indigo-bg {
+    background-color: var(--voynich-indigo);
+  }
+}
+
+/* Custom slider styles */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-track {
+  background: hsl(0, 0%, 90%);
+  height: 8px;
+  border-radius: 4px;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  background: var(--voynich-amber);
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.slider::-moz-range-track {
+  background: hsl(0, 0%, 90%);
+  height: 8px;
+  border-radius: 4px;
+  border: none;
+}
+
+.slider::-moz-range-thumb {
+  background: var(--voynich-amber);
+  height: 20px;
+  width: 20px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Canvas styles for visualizations */
+.spectrum-canvas {
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, var(--voynich-slate) 0%, hsl(221, 39%, 11%) 100%);
+}
+
+/* File upload area styles */
+.upload-area {
+  transition: all 0.3s ease;
+  border: 2px dashed hsl(0, 0%, 80%);
+}
+
+.upload-area:hover {
+  border-color: var(--voynich-amber);
+  background-color: hsl(45, 93%, 97%);
+}
+
+.upload-area.drag-over {
+  border-color: var(--voynich-amber);
+  background-color: hsl(45, 93%, 95%);
+  transform: scale(1.02);
+}
+
+/* Pattern frequency styles */
+.pattern-item {
+  transition: all 0.2s ease;
+}
+
+.pattern-item:hover {
+  background-color: hsl(45, 93%, 95%);
+  transform: translateX(4px);
+}
+
+/* Button hover effects */
+.voynich-button {
+  transition: all 0.2s ease;
+}
+
+.voynich-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive glyph text */
+@media (max-width: 768px) {
+  .glyph-input {
+    font-size: 16px;
+  }
+}
+
+/* Animation for frequency bars */
+@keyframes frequencyPulse {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.2); }
+}
+
+.frequency-bar {
+  animation: frequencyPulse 2s ease-in-out infinite;
+}
+
+/* Loading states */
+.loading-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
