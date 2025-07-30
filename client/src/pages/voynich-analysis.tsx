@@ -10,7 +10,8 @@ import PresetManager from '@/components/preset-manager';
 import ResearchNotes from '@/components/research-notes';
 import { usePatternAnalysis, type AnalysisConfig } from '@/hooks/use-pattern-analysis';
 import { useAudioSynthesis } from '@/hooks/use-audio-synthesis';
-import type { MappingAlgorithm, WaveformType } from '@/lib/glyph-mapper';
+import type { MappingAlgorithm } from '@/lib/glyph-mapper';
+import type { WaveformType } from '@/lib/audio-engine';
 
 export default function VoynichAnalysis() {
   const [glyphSequence, setGlyphSequence] = useState('');

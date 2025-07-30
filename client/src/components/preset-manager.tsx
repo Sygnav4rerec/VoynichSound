@@ -7,7 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Bookmark, Plus, Trash2, Upload, Loader2 } from 'lucide-react';
-import type { WaveformType, MappingAlgorithm } from '@/lib/glyph-mapper';
+import type { MappingAlgorithm } from '@/lib/glyph-mapper';
+import type { WaveformType } from '@/lib/audio-engine';
 
 interface PresetConfig {
   glyphSequence: string;

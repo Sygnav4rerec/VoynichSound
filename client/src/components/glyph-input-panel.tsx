@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -6,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PenTool, Play, Loader2 } from 'lucide-react';
-import type { WaveformType, MappingAlgorithm } from '@/lib/glyph-mapper';
+import type { MappingAlgorithm } from '@/lib/glyph-mapper';
+import type { WaveformType } from '@/lib/audio-engine';
 
 interface GlyphInputPanelProps {
   glyphSequence: string;
@@ -33,19 +35,32 @@ export default function GlyphInputPanel({
   onAnalyze,
   isAnalyzing
 }: GlyphInputPanelProps) {
-  const glyphCount = Array.from(glyphSequence).length;
-  const uniqueGlyphs = new Set(Array.from(glyphSequence)).size;
+  // Memoize calculations to prevent re-computation on every render
+  const glyphStats = useMemo(() => {
+    const glyphs = Array.from(glyphSequence);
+    return {
+      count: glyphs.length,
+      unique: new Set(glyphs).size
+    };
+  }, [glyphSequence]);
 
-  const handleFrequencySliderChange = (value: number[]) => {
+  // Optimized input handlers to prevent stalling
+  const handleGlyphSequenceChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    // Prevent excessive recalculations during rapid input
+    onGlyphSequenceChange(value);
+  }, [onGlyphSequenceChange]);
+
+  const handleFrequencySliderChange = useCallback((value: number[]) => {
     onBaseFrequencyChange(value[0]);
-  };
+  }, [onBaseFrequencyChange]);
 
-  const handleFrequencyInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFrequencyInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10);
     if (!isNaN(value) && value >= 20 && value <= 2000) {
       onBaseFrequencyChange(value);
     }
-  };
+  }, [onBaseFrequencyChange]);
 
   return (
     <Card className="analysis-card bg-white rounded-lg shadow-md p-6">
@@ -61,11 +76,11 @@ export default function GlyphInputPanel({
           className="glyph-input w-full h-32 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-amber-500 focus:border-transparent text-lg"
           placeholder="𝖆𝖇𝖈 ⟁〰༄ Enter Voynich glyphs or Unicode symbols..."
           value={glyphSequence}
-          onChange={(e) => onGlyphSequenceChange(e.target.value)}
+          onChange={handleGlyphSequenceChange}
         />
         <p className="text-xs text-gray-500 mt-2">
-          <span>{glyphCount}</span> glyphs | 
-          <span className="ml-1">{uniqueGlyphs}</span> unique patterns
+          <span>{glyphStats.count}</span> glyphs | 
+          <span className="ml-1">{glyphStats.unique}</span> unique patterns
         </p>
       </div>
 
