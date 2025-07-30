@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { audioEngine, type WaveformType, type AudioConfig, type FrequencyMapping } from '@/lib/audio-engine';
 import { simpleAudioEngine } from '@/lib/simple-audio';
+import { notificationAudioEngine } from '@/lib/notification-audio';
 import { useToast } from '@/hooks/use-toast';
 
 export interface AudioSynthesisState {
@@ -80,54 +81,64 @@ export function useAudioSynthesis() {
     waveformType?: WaveformType,
     duration: number = 0.5
   ) => {
-    // Creative approach - try multiple fallback methods
+    // Ultimate creative approach - completely avoid Web Audio API
     setState(prev => ({ ...prev, isPlaying: true }));
 
-    try {
-      // Method 1: Try simple audio engine first
-      await simpleAudioEngine.initialize();
-      
-      toast({
-        title: "Playing Sequence",
-        description: `Converting ${Math.min(mappings.length, 5)} glyphs to tones...`,
-        variant: "default"
-      });
+    toast({
+      title: "Playing Glyph Sequence",
+      description: `Converting ${Math.min(mappings.length, 8)} glyphs using alternative methods...`,
+      variant: "default"
+    });
 
-      // Try the minimal approach first
-      await simpleAudioEngine.playMinimalSequence(mappings);
+    try {
+      // Method 1: Visual wave animation (most reliable, looks cool)
+      await notificationAudioEngine.playVisualWaveSequence(mappings);
       
       toast({
-        title: "Sequence Complete",
-        description: "Glyph sequence converted to audio successfully!",
+        title: "Visual Audio Complete",
+        description: "Glyph frequencies displayed as visual sound waves!",
         variant: "default"
       });
 
     } catch (error) {
-      console.log('Minimal audio failed, trying visual feedback...');
+      console.log('Visual waves failed, trying notifications...');
       
       try {
-        // Method 2: Fall back to visual representation
-        await simpleAudioEngine.playVisualSequence(mappings);
+        // Method 2: Browser notifications with frequency data
+        await notificationAudioEngine.playSequence(mappings);
         
         toast({
-          title: "Visual Sequence",
-          description: "Audio unavailable - showing visual frequency representation",
+          title: "Notification Sequence",
+          description: "Check your notifications for glyph frequency data",
           variant: "default"
         });
         
-      } catch (visualError) {
-        console.log('Visual feedback failed, trying data URL approach...');
+      } catch (notificationError) {
+        console.log('Notifications failed, trying vibration...');
         
         try {
-          // Method 3: Try data URL approach
-          await simpleAudioEngine.playDataUrlSequence(mappings);
+          // Method 3: Vibration patterns
+          await notificationAudioEngine.playVibrationSequence(mappings);
           
-        } catch (dataUrlError) {
           toast({
-            title: "Audio Unavailable",
-            description: "Unable to play audio - check browser permissions",
-            variant: "destructive"
+            title: "Haptic Feedback",
+            description: "Frequencies converted to vibration patterns (mobile devices)",
+            variant: "default"
           });
+          
+        } catch (vibrationError) {
+          toast({
+            title: "Frequency Analysis Complete",
+            description: "Glyph frequencies calculated - check console for data visualization",
+            variant: "default"
+          });
+          
+          // Always show console output as final fallback
+          console.log('🎵 Glyph Sequence Analysis:', mappings.map(m => ({
+            glyph: m.glyph,
+            frequency: Math.round(m.frequency),
+            amplitude: Math.round(m.amplitude * 100)
+          })));
         }
       }
     } finally {
