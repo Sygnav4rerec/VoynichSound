@@ -41,23 +41,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch sessions" });
     }
   });
-
-  app.post("/api/sessions", async (req, res) => {
+// Export endpoints
+  app.post("/api/export/audio", async (req, res) => {
     try {
-      const validatedData = insertAnalysisSessionSchema.parse(req.body);
-      // For demo purposes, using a mock user ID
-      const userId = "demo-user";
-      const session = await storage.createAnalysisSession({ ...validatedData, userId });
-      res.json(session);
+      const schema = z.object({
+        glyphSequence: z.string().min(1),
+        baseFrequency: z.number().min(20).max(2000).default(440),
+        waveformType: z.enum(waveformTypes).default('sine'),
+        mappingAlgorithm: z.enum(mappingAlgorithms).default('unicode'),
+        duration: z.number().min(0.1).max(30).default(5),
+        sampleRate: z.number().default(44100),
+      });
+      const config = schema.parse(req.body);
+     
+      const analysis = patternAnalyzer.analyzeGlyphSequence(
+        config.glyphSequence,
+        config.baseFrequency,
+        config.mappingAlgorithm
+      );
+     
+      res.json({
+        config,
+        analysis,
+        message: "Audio configuration ready for client-side generation"
+      });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid session data", details: error.errors });
+        res.status(400).json({ error: "Invalid export configuration", details: error.errors });
       } else {
-        res.status(500).json({ error: "Failed to create session" });
+        res.status(500).json({ error: "Failed to prepare audio export" });
       }
     }
   });
-
+  
   app.put("/api/sessions/:id", async (req, res) => {
     try {
       const { id } = req.params;
@@ -90,31 +106,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Glyph Analysis
-  app.post("/api/analyze-glyphs", async (req, res) => {
+app.post("/api/export/data", async (req, res) => {
     try {
       const schema = z.object({
-        glyphSequence: z.string().min(1),
-        baseFrequency: z.number().min(20).max(2000).default(440),
-        mappingAlgorithm: z.enum(mappingAlgorithms).default('unicode'),
+        sessionId: z.string().optional(),
+        format: z.enum(['json', 'csv']).default('json'),
       });
-
-      const { glyphSequence, baseFrequency, mappingAlgorithm } = schema.parse(req.body);
-      
-      const analysis = patternAnalyzer.analyzeGlyphSequence(
-        glyphSequence,
-        baseFrequency,
-        mappingAlgorithm
-      );
-      
-      res.json(analysis);
+      const { sessionId, format } = schema.parse(req.body);
+     
+      if (sessionId) {
+        const session = await storage.getAnalysisSession(sessionId);
+        if (!session) {
+          return res.status(404).json({ error: "Session not found" });
+        }
+       
+        if (format === 'csv') {
+          res.setHeader('Content-Type', 'text/csv');
+          res.setHeader('Content-Disposition', `attachment; filename="analysis_${sessionId}.csv"`);
+          
+          const csvData = convertToCSV(session);
+          res.send(csvData);
+        } else {
+          res.setHeader("Content-Type", "application/json");
+          res.setHeader("Content-Disposition", `attachment; filename="analysis_${sessionId}.json"`);
+          res.json(session);
+        }
+      } else {
+        res.status(400).json({ error: "Session ID required for data export" });
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid analysis data", details: error.errors });
+        res.status(400).json({ error: "Invalid export parameters", details: error.errors });
       } else {
-        res.status(500).json({ error: "Failed to analyze glyphs" });
+        res.status(500).json({ error: "Failed to export data" });
       }
     }
   });
+
+  const httpServer = createServer(app);
+  return httpServer;
+}
+
+// Helper function for CSV export
+function convertToCSV(session: any): string {
+  if (!session) return "No data";
+
+  const headers = Object.keys(session);
+  const values = headers.map(header => {
+    let value = session[header];
+    if (value === null || value === undefined) value = "";
+    if (typeof value === "object") value = JSON.stringify(value);
+    return String(value).replace(/"/g, '""');
+  });
+
+  return [
+    headers.join(","),
+    values.join(",")
+  ].join("\n");
+}
 
   // Presets
   app.get("/api/presets", async (req, res) => {
@@ -273,10 +322,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const csvData = this.convertToCSV(session);
           res.send(csvData);
         } else {
-          res.setHeader('Content-Type', 'application/json');
-          res.setHeader('Content-Disposition', `attachment; filename="analysis_${sessionId}.json"`);
-          res.json(session);
-        }
+  res.setHeader("Content-Type", "text/csv");
+  res.setHeader("Content-Disposition", `attachment; filename="analysis_${sessionId}.csv"`);
+  
+  // Temporary inline version until we clean this up
+  const csvData = convertToCSV(session);   // we'll define this function below
+  res.send(csvData);
+}
       } else {
         res.status(400).json({ error: "Session ID required for data export" });
       }
