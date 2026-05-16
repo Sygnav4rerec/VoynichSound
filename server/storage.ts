@@ -84,7 +84,13 @@ export class MemStorage implements IStorage {
   async createAnalysisSession(sessionData: InsertAnalysisSession & { userId: string }): Promise<AnalysisSession> {
     const id = randomUUID();
     const now = new Date();
+    // FIX: supply defaults for optional fields that AnalysisSession requires as non-undefined
     const session: AnalysisSession = {
+      baseFrequency: 440,
+      waveformType: 'sine',
+      mappingAlgorithm: 'unicode',
+      analysisResults: null,
+      notes: null,
       ...sessionData,
       id,
       createdAt: now,
@@ -136,7 +142,11 @@ export class MemStorage implements IStorage {
 
   async createManuscriptImage(imageData: InsertManuscriptImage & { userId: string }): Promise<ManuscriptImage> {
     const id = randomUUID();
+    // FIX: supply defaults for optional JSON fields that ManuscriptImage requires as non-optional
     const image: ManuscriptImage = {
+      detectedGlyphs: null,
+      patterns: null,
+      analysisData: null,
       ...imageData,
       id,
       createdAt: new Date(),
