@@ -9,5 +9,4 @@
       "source": "/(.*)",
       "destination": "/server/index.ts"
     }
-  ]
-}
+ 
