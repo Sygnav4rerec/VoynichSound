@@ -3,15 +3,15 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { imageProcessor } from "./services/image-processor";
 import { patternAnalyzer } from "./services/pattern-analyzer";
-import { 
+import {
   insertAnalysisSessionSchema,
   insertGlyphPresetSchema,
   type WaveformType,
   type MappingAlgorithm,
   waveformTypes,
-  mappingAlgorithms
+  mappingAlgorithms,
 } from "@shared/schema";
-import multer from 'multer';
+import multer from "multer";
 import { z } from "zod";
 
 // Configure multer for file uploads
@@ -21,19 +21,19 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit
   },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
+    if (file.mimetype.startsWith("image/")) {
       cb(null, true);
     } else {
-      cb(new Error('Only image files are allowed'));
+      cb(new Error("Only image files are allowed"));
     }
   },
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Analysis Sessions
+  // ── Analysis Sessions ──────────────────────────────────────────────────────
+
   app.get("/api/sessions", async (req, res) => {
     try {
-      // For demo purposes, using a mock user ID
       const userId = "demo-user";
       const sessions = await storage.getAnalysisSessionsByUser(userId);
       res.json(sessions);
@@ -41,39 +41,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to fetch sessions" });
     }
   });
-// Export endpoints
-  app.post("/api/export/audio", async (req, res) => {
-    try {
-      const schema = z.object({
-        glyphSequence: z.string().min(1),
-        baseFrequency: z.number().min(20).max(2000).default(440),
-        waveformType: z.enum(waveformTypes).default('sine'),
-        mappingAlgorithm: z.enum(mappingAlgorithms).default('unicode'),
-        duration: z.number().min(0.1).max(30).default(5),
-        sampleRate: z.number().default(44100),
-      });
-      const config = schema.parse(req.body);
-     
-      const analysis = patternAnalyzer.analyzeGlyphSequence(
-        config.glyphSequence,
-        config.baseFrequency,
-        config.mappingAlgorithm
-      );
-     
-      res.json({
-        config,
-        analysis,
-        message: "Audio configuration ready for client-side generation"
-      });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid export configuration", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to prepare audio export" });
-      }
-    }
-  });
-  
+
   app.put("/api/sessions/:id", async (req, res) => {
     try {
       const { id } = req.params;
@@ -105,70 +73,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Glyph Analysis
-app.post("/api/export/data", async (req, res) => {
-    try {
-      const schema = z.object({
-        sessionId: z.string().optional(),
-        format: z.enum(['json', 'csv']).default('json'),
-      });
-      const { sessionId, format } = schema.parse(req.body);
-     
-      if (sessionId) {
-        const session = await storage.getAnalysisSession(sessionId);
-        if (!session) {
-          return res.status(404).json({ error: "Session not found" });
-        }
-       
-        if (format === 'csv') {
-          res.setHeader('Content-Type', 'text/csv');
-          res.setHeader('Content-Disposition', `attachment; filename="analysis_${sessionId}.csv"`);
-          
-          const csvData = convertToCSV(session);
-          res.send(csvData);
-        } else {
-          res.setHeader("Content-Type", "application/json");
-          res.setHeader("Content-Disposition", `attachment; filename="analysis_${sessionId}.json"`);
-          res.json(session);
-        }
-      } else {
-        res.status(400).json({ error: "Session ID required for data export" });
-      }
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ error: "Invalid export parameters", details: error.errors });
-      } else {
-        res.status(500).json({ error: "Failed to export data" });
-      }
-    }
-  });
+  // ── Presets ────────────────────────────────────────────────────────────────
 
-  const httpServer = createServer(app);
-  return httpServer;
-}
-
-// Helper function for CSV export
-function convertToCSV(session: any): string {
-  if (!session) return "No data";
-
-  const headers = Object.keys(session);
-  const values = headers.map(header => {
-    let value = session[header];
-    if (value === null || value === undefined) value = "";
-    if (typeof value === "object") value = JSON.stringify(value);
-    return String(value).replace(/"/g, '""');
-  });
-
-  return [
-    headers.join(","),
-    values.join(",")
-  ].join("\n");
-}
-
-  // Presets
   app.get("/api/presets", async (req, res) => {
     try {
-      // For demo purposes, using a mock user ID
       const userId = "demo-user";
       const presets = await storage.getGlyphPresets(userId);
       res.json(presets);
@@ -180,7 +88,6 @@ function convertToCSV(session: any): string {
   app.post("/api/presets", async (req, res) => {
     try {
       const validatedData = insertGlyphPresetSchema.parse(req.body);
-      // For demo purposes, using a mock user ID
       const userId = "demo-user";
       const preset = await storage.createGlyphPreset({ ...validatedData, userId });
       res.json(preset);
@@ -206,8 +113,9 @@ function convertToCSV(session: any): string {
     }
   });
 
-  // Manuscript Image Upload and Analysis
-  app.post("/api/manuscript/upload", upload.single('image'), async (req, res) => {
+  // ── Manuscript Image Upload & Analysis ────────────────────────────────────
+
+  app.post("/api/manuscript/upload", upload.single("image"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ error: "No image file provided" });
@@ -220,11 +128,9 @@ function convertToCSV(session: any): string {
       });
 
       const options = optionsSchema.parse(req.body);
-      
       const analysis = await imageProcessor.processManuscriptImage(req.file.buffer, options);
-      
-      // Store the image and analysis results
-      const userId = "demo-user"; // For demo purposes
+
+      const userId = "demo-user";
       const manuscriptImage = await storage.createManuscriptImage({
         filename: `manuscript_${Date.now()}.png`,
         originalName: req.file.originalname,
@@ -245,9 +151,9 @@ function convertToCSV(session: any): string {
       if (error instanceof z.ZodError) {
         res.status(400).json({ error: "Invalid options", details: error.errors });
       } else {
-        res.status(500).json({ 
-          error: "Failed to process manuscript image", 
-          details: error instanceof Error ? error.message : 'Unknown error'
+        res.status(500).json({
+          error: "Failed to process manuscript image",
+          details: error instanceof Error ? error.message : "Unknown error",
         });
       }
     }
@@ -255,7 +161,7 @@ function convertToCSV(session: any): string {
 
   app.get("/api/manuscript/images", async (req, res) => {
     try {
-      const userId = "demo-user"; // For demo purposes
+      const userId = "demo-user";
       const images = await storage.getManuscriptImages(userId);
       res.json(images);
     } catch (error) {
@@ -263,32 +169,30 @@ function convertToCSV(session: any): string {
     }
   });
 
-  // Export endpoints
+  // ── Export ─────────────────────────────────────────────────────────────────
+
   app.post("/api/export/audio", async (req, res) => {
     try {
       const schema = z.object({
         glyphSequence: z.string().min(1),
         baseFrequency: z.number().min(20).max(2000).default(440),
-        waveformType: z.enum(waveformTypes).default('sine'),
-        mappingAlgorithm: z.enum(mappingAlgorithms).default('unicode'),
+        waveformType: z.enum(waveformTypes).default("sine"),
+        mappingAlgorithm: z.enum(mappingAlgorithms).default("unicode"),
         duration: z.number().min(0.1).max(30).default(5),
         sampleRate: z.number().default(44100),
       });
 
       const config = schema.parse(req.body);
-      
-      // Generate audio data
       const analysis = patternAnalyzer.analyzeGlyphSequence(
         config.glyphSequence,
         config.baseFrequency,
         config.mappingAlgorithm
       );
 
-      // For now, return the configuration for client-side audio generation
       res.json({
         config,
         analysis,
-        message: "Audio configuration ready for client-side generation"
+        message: "Audio configuration ready for client-side generation",
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -303,34 +207,31 @@ function convertToCSV(session: any): string {
     try {
       const schema = z.object({
         sessionId: z.string().optional(),
-        format: z.enum(['json', 'csv']).default('json'),
+        format: z.enum(["json", "csv"]).default("json"),
       });
 
       const { sessionId, format } = schema.parse(req.body);
-      
-      if (sessionId) {
-        const session = await storage.getAnalysisSession(sessionId);
-        if (!session) {
-          return res.status(404).json({ error: "Session not found" });
-        }
-        
-        if (format === 'csv') {
-          res.setHeader('Content-Type', 'text/csv');
-          res.setHeader('Content-Disposition', `attachment; filename="analysis_${sessionId}.csv"`);
-          
-          // Convert session data to CSV format
-          const csvData = this.convertToCSV(session);
-          res.send(csvData);
-        } else {
-  res.setHeader("Content-Type", "text/csv");
-  res.setHeader("Content-Disposition", `attachment; filename="analysis_${sessionId}.csv"`);
-  
-  // Temporary inline version until we clean this up
-  const csvData = convertToCSV(session);   // we'll define this function below
-  res.send(csvData);
-}
+
+      if (!sessionId) {
+        return res.status(400).json({ error: "Session ID required for data export" });
+      }
+
+      const session = await storage.getAnalysisSession(sessionId);
+      if (!session) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+
+      if (format === "csv") {
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", `attachment; filename="analysis_${sessionId}.csv"`);
+        res.send(convertToCSV(session));
       } else {
-        res.status(400).json({ error: "Session ID required for data export" });
+        res.setHeader("Content-Type", "application/json");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="analysis_${sessionId}.json"`
+        );
+        res.json(session);
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -341,36 +242,36 @@ function convertToCSV(session: any): string {
     }
   });
 
+  // ── Server ─────────────────────────────────────────────────────────────────
+
   const httpServer = createServer(app);
   return httpServer;
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function convertToCSV(session: any): string {
-  // Simple CSV conversion for analysis results
-  const headers = ['Glyph', 'Frequency', 'Pattern', 'Count'];
-  const rows = [headers.join(',')];
-  
+  const headers = ["Glyph", "Frequency", "Pattern", "Count"];
+  const rows = [headers.join(",")];
+
   if (session.analysisResults?.frequencyMappings) {
     for (const mapping of session.analysisResults.frequencyMappings) {
-      rows.push([
-        mapping.glyph,
-        mapping.frequency.toString(),
-        '',
-        ''
-      ].join(','));
+      rows.push([mapping.glyph, mapping.frequency.toString(), "", ""].join(","));
     }
   }
-  
+
   if (session.analysisResults?.patterns) {
     for (const pattern of session.analysisResults.patterns) {
-      rows.push([
-        '',
-        pattern.mappedFrequency?.toString() || '',
-        pattern.sequence,
-        pattern.frequency.toString()
-      ].join(','));
+      rows.push(
+        [
+          "",
+          pattern.mappedFrequency?.toString() ?? "",
+          pattern.sequence,
+          pattern.frequency.toString(),
+        ].join(",")
+      );
     }
   }
-  
-  return rows.join('\n');
+
+  return rows.join("\n");
 }
